@@ -23,6 +23,7 @@
     .outage-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
     .outage-duration{font-size:24px;font-weight:700;color:var(--error)}
     .outage-times{font-size:14px;color:var(--muted)}
+    #noOutages{padding:20px;color:var(--muted);text-align:center}
     @media (max-width:800px){.kpi{grid-column:span 12}}
   </style>
 </head>
@@ -41,12 +42,12 @@
       <div class="card wide">
         <div class="label">Toutes les coupures</div>
         <div class="outages-list" id="outagesList"></div>
-        <div id="noOutages" style="padding:20px;color:var(--muted);text-align:center;display:none">Aucune coupure détectée sur 24 h</div>
+        <div id="noOutages">Aucune coupure détectée sur 24 h</div>
       </div>
     </div>
   </div>
 <script>
-  
+document.addEventListener("DOMContentLoaded", function() {
 const API_BASE_URL = 'https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-west-3.on.aws';
 const AGENT = 'home';
 const TARGET = 'www.google.com';
@@ -62,6 +63,7 @@ function statusClass(item){if(item.missing)return 'missing'; if(item.status==='d
 
 function renderLatest(item){
   const s=document.getElementById('statusValue'), m=document.getElementById('statusMeta'), l=document.getElementById('latencyValue'), p=document.getElementById('lossValue');
+  if(!s || !m || !l || !p) return;
   if(!item){s.textContent='Aucune donnée';s.className='value status';m.textContent='Aucune mesure trouvée';l.textContent='—';p.textContent='—';return;}
   s.textContent=statusLabel(item); s.className=`value status ${statusClass(item)}`;
   m.textContent=`Dernière mesure : ${fmtDate(item.checkedAt)}`;
@@ -94,6 +96,7 @@ function renderOutages(outages){
   const noOutages = document.getElementById('noOutages');
   const countEl = document.getElementById('outageCountValue');
   const countMeta = document.getElementById('outageCountMeta');
+  if(!list || !noOutages || !countEl || !countMeta) return;
 
   countEl.textContent = outages.length;
   countMeta.textContent = outages.length === 1 ? 'coupure détectée' : 'coupures détectées';
@@ -131,7 +134,12 @@ function buildTimeline(items){
 }
 
 function renderHistory(items){
-  const chart=document.getElementById('chart'), rows=document.getElementById('rows'); chart.innerHTML=''; rows.innerHTML='';
+  const chart=document.getElementById('chart');
+  const rows=document.getElementById('rows');
+  if(!chart || !rows) return;
+  chart.innerHTML = '';
+  rows.innerHTML = '';
+
   const timeline = buildTimeline(items);
   const outages = findOutages(timeline);
   renderOutages(outages);
@@ -162,10 +170,13 @@ async function refresh(){
     const latest=await getJson(`/latest?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}`);
     const history=await getJson(`/history?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}&hours=24`);
     renderLatest(latest.item); renderHistory(history.items||[]);
-  }catch(err){console.error(err);document.getElementById('statusValue').textContent='Erreur';document.getElementById('statusMeta').textContent=err.message;}
+  }catch(err){console.error(err);const s=document.getElementById('statusValue');if(s){s.textContent='Erreur';}}
 }
 
-document.getElementById('refreshBtn').addEventListener('click', refresh); refresh(); setInterval(refresh, 30000);
+document.getElementById('refreshBtn')?.addEventListener('click', refresh); 
+refresh(); 
+setInterval(refresh, 30000);
+});
 </script>
 </body>
 </html>
