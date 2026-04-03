@@ -12,7 +12,7 @@
     *{box-sizing:border-box} body{margin:0;font-family:Inter,sans-serif;background:var(--bg);color:var(--text)}
     .wrap{max-width:1100px;margin:0 auto;padding:32px 16px 64px}.hero{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:24px;flex-wrap:wrap}
     h1{margin:0;font-size:clamp(28px,4vw,42px)} .sub{color:var(--muted);max-width:70ch}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
-    .card{grid-column:span 12;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)} .kpi{grid-column:span 4}.wide{grid-column:span 12}
+    .card{grid-column:span 12;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)} .kpi{grid-column:span 3}.wide{grid-column:span 12}
     .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{font-size:30px;font-weight:700;margin-top:8px}.status.up{color:var(--success)}.status.down{color:var(--error)}.status.missing{color:var(--warning)}
     .meta{color:var(--muted);font-size:14px;margin-top:8px}.chart{display:flex;align-items:end;gap:3px;height:220px;padding-top:20px}.bar{flex:1;background:var(--primary);border-radius:4px 4px 0 0;opacity:.8}.bar.down{background:var(--error)}.bar.lossy{background:var(--warning)}.bar.missing{background:var(--missing);opacity:.6}
     .table{width:100%;border-collapse:collapse;margin-top:12px}.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
@@ -23,13 +23,15 @@
 <body>
   <div class="wrap">
     <div class="hero">
-      <div><h1>Ping dashboard</h1><div class="sub">Dashboard public GitHub Pages avec perte partielle et détection des trous de collecte.</div></div>
+      <div><h1>Ping dashboard</h1><div class="sub">Dashboard public GitHub Pages avec stats complètes 24 h (pings perdus + % global).</div></div>
       <button class="refresh" id="refreshBtn">Rafraîchir</button>
     </div>
     <div class="grid">
       <div class="card kpi"><div class="label">Statut</div><div class="value status" id="statusValue">—</div><div class="meta" id="statusMeta">En attente de données</div></div>
       <div class="card kpi"><div class="label">Latence</div><div class="value" id="latencyValue">—</div><div class="meta">Moyenne du dernier cycle</div></div>
       <div class="card kpi"><div class="label">Perte</div><div class="value" id="lossValue">—</div><div class="meta">Dernier cycle de ping</div></div>
+      <div class="card kpi"><div class="label">Pings perdus 24 h</div><div class="value" id="lostPingsValue">—</div><div class="meta" id="lostPingsMeta">Nombre total de pings</div></div>
+      <div class="card kpi"><div class="label">% Perte 24 h</div><div class="value" id="lossPctValue">—</div><div class="meta" id="lossPctMeta">Pourcentage global</div></div>
       <div class="card wide"><div class="label">Historique 24 h</div><div class="chart" id="chart"></div></div>
       <div class="card wide"><div class="label">Mesures récentes</div><table class="table"><thead><tr><th>Heure</th><th>Statut</th><th>Latence</th><th>Perte</th></tr></thead><tbody id="rows"></tbody></table></div>
     </div>
@@ -39,6 +41,7 @@ const API_BASE_URL = 'https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-wes
 const AGENT = 'home';
 const TARGET = 'www.google.com';
 const INTERVAL_MINUTES = 1;
+const PING_COUNT = 5;
 
 async function getJson(path){const res=await fetch(`${API_BASE_URL}${path}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}
 function fmtDate(s){return new Date(s).toLocaleString('fr-FR');}
@@ -68,11 +71,36 @@ function buildTimeline(items){
   return timeline;
 }
 
+function computeStats(timeline){
+  let totalLost = 0;
+  let totalPings = 0;
+  for(const item of timeline){
+    if(item.missing){
+      totalLost += PING_COUNT;
+      totalPings += PING_COUNT;
+      continue;
+    }
+    const lossPct = Number(item.packetLoss || 0);
+    const cycleLost = Math.round((lossPct / 100) * PING_COUNT);
+    totalLost += cycleLost;
+    totalPings += PING_COUNT;
+  }
+  const lossPct = totalPings > 0 ? Math.round((totalLost / totalPings) * 100) : 0;
+  return {totalLost, totalPings, lossPct};
+}
+
 function renderHistory(items){
   const chart=document.getElementById('chart'), rows=document.getElementById('rows'); chart.innerHTML=''; rows.innerHTML='';
   const timeline = buildTimeline(items);
   const visible = timeline.slice(-180);
+  const stats = computeStats(timeline);
   const maxLatency=Math.max(50,...timeline.map(x=>x.latencyMs||0));
+
+  document.getElementById('lostPingsValue').textContent = String(stats.totalLost);
+  document.getElementById('lostPingsMeta').textContent = `Sur ${stats.totalPings} pings (24 h)`;
+  document.getElementById('lossPctValue').textContent = `${stats.lossPct} %`;
+  document.getElementById('lossPctMeta').textContent = `Perte globale sur la journée`;
+
   visible.forEach(item=>{
     const bar=document.createElement('div');
     let cls='bar'; let h=8;
