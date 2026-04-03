@@ -1,21 +1,183 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <script>
-    fetch("https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-west-3.on.aws/latest?agent=home&target=example.com")
-      .then(r => r.json())
-      .then(data => console.log("OK", data))
-      .catch(err => console.error("CORS ou réseau", err));
-  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ping Dashboard</title>
+  <title>Ping dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;--offset:#f3f0ec;--border:#d4d1ca;--text:#28251d;--muted:#7a7974;--faint:#bab9b4;--primary:#01696f;--success:#437a22;--error:#a12c7b;--warn:#964219;--radius:.9rem;--shadow:0 12px 32px rgba(0,0,0,.06)}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1100px;margin:0 auto;padding:32px 16px 64px}
+    .hero{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+    h1{margin:0;font-size:clamp(28px,4vw,42px)}
+    .sub{color:var(--muted);max-width:70ch}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{grid-column:span 12;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+    .kpi{grid-column:span 4}
+    .wide{grid-column:span 12}
+    .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .value{font-size:30px;font-weight:700;margin-top:8px}
+    .status.up{color:var(--success)}
+    .status.down{color:var(--error)}
+    .meta{color:var(--muted);font-size:14px;margin-top:8px}
+    .chart{display:flex;align-items:end;gap:3px;height:220px;padding-top:20px}
+    .bar{flex:1;background:var(--primary);border-radius:4px 4px 0 0;opacity:.75;position:relative}
+    .bar.down{background:var(--error);opacity:.9}
+    .bar:hover{opacity:1}
+    .table{width:100%;border-collapse:collapse;margin-top:12px}
+    .table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--offset);font-size:13px;color:var(--muted)}
+    .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+    .refresh{padding:10px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:12px;cursor:pointer}
+    @media (max-width:800px){.kpi{grid-column:span 12}}
+  </style>
 </head>
 <body>
-  <h1>Ping dashboard OK</h1>
-  <p>Si tu vois cette page, GitHub Pages fonctionne.</p>
-  <script>
-    console.log("GitHub Pages OK");
-  </script>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>Ping dashboard</h1>
+        <div class="sub">Dashboard public GitHub Pages qui affiche les mesures envoyées depuis ton réseau privé vers AWS Lambda.</div>
+      </div>
+      <button class="refresh" id="refreshBtn">Rafraîchir</button>
+    </div>
+
+    <div class="grid">
+      <div class="card kpi">
+        <div class="label">Statut</div>
+        <div class="value status" id="statusValue">—</div>
+        <div class="meta" id="statusMeta">En attente de données</div>
+      </div>
+
+      <div class="card kpi">
+        <div class="label">Latence</div>
+        <div class="value" id="latencyValue">—</div>
+        <div class="meta">Dernière mesure</div>
+      </div>
+
+      <div class="card kpi">
+        <div class="label">Perte</div>
+        <div class="value" id="lossValue">—</div>
+        <div class="meta">Paquet perdu</div>
+      </div>
+
+      <div class="card wide">
+        <div class="label">Historique 24 h</div>
+        <div class="chart" id="chart"></div>
+      </div>
+
+      <div class="card wide">
+        <div class="label">Mesures récentes</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Heure</th>
+              <th>Statut</th>
+              <th>Latence</th>
+              <th>Perte</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API_BASE_URL = 'https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-west-3.on.aws';
+const AGENT = 'home';
+const TARGET = 'www.google.com';
+
+async function getJson(path) {
+  const res = await fetch(`${API_BASE_URL}${path}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function fmtDate(s) {
+  return new Date(s).toLocaleString('fr-FR');
+}
+
+function renderLatest(item) {
+  const statusEl = document.getElementById('statusValue');
+  const metaEl = document.getElementById('statusMeta');
+  const latencyEl = document.getElementById('latencyValue');
+  const lossEl = document.getElementById('lossValue');
+
+  if (!item) {
+    statusEl.textContent = 'Aucune donnée';
+    statusEl.className = 'value status';
+    metaEl.textContent = 'Aucune mesure trouvée';
+    latencyEl.textContent = '—';
+    lossEl.textContent = '—';
+    return;
+  }
+
+  statusEl.textContent = item.status === 'up' ? 'En ligne' : 'Hors ligne';
+  statusEl.className = `value status ${item.status}`;
+  metaEl.textContent = `Dernière mesure : ${fmtDate(item.checkedAt)}`;
+  latencyEl.textContent = item.latencyMs != null ? `${Math.round(item.latencyMs)} ms` : '—';
+  lossEl.textContent = item.packetLoss != null ? `${item.packetLoss} %` : '—';
+}
+
+function renderHistory(items) {
+  const chart = document.getElementById('chart');
+  const rows = document.getElementById('rows');
+  chart.innerHTML = '';
+  rows.innerHTML = '';
+
+  const last100 = items.slice(-100);
+  const maxLatency = Math.max(50, ...last100.map(x => x.latencyMs || 0));
+
+  last100.forEach(item => {
+    const bar = document.createElement('div');
+    const h = item.status === 'down'
+      ? 100
+      : Math.max(6, Math.round(((item.latencyMs || 0) / maxLatency) * 100));
+
+    bar.className = `bar ${item.status === 'down' ? 'down' : ''}`;
+    bar.style.height = `${h}%`;
+    bar.title = `${fmtDate(item.checkedAt)} — ${item.status} — ${item.latencyMs ?? '—'} ms — ${item.packetLoss ?? '—'} %`;
+    chart.appendChild(bar);
+  });
+
+  items.slice().reverse().slice(0, 20).forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDate(item.checkedAt)}</td>
+      <td>
+        <span class="badge" style="color:${item.status === 'up' ? 'var(--success)' : 'var(--error)'}">
+          <span class="dot"></span>
+          ${item.status === 'up' ? 'En ligne' : 'Hors ligne'}
+        </span>
+      </td>
+      <td>${item.latencyMs != null ? Math.round(item.latencyMs) + ' ms' : '—'}</td>
+      <td>${item.packetLoss != null ? item.packetLoss + ' %' : '—'}</td>
+    `;
+    rows.appendChild(tr);
+  });
+}
+
+async function refresh() {
+  try {
+    const latest = await getJson(`/latest?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}`);
+    const history = await getJson(`/history?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}&hours=24`);
+    renderLatest(latest.item);
+    renderHistory(history.items || []);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('statusValue').textContent = 'Erreur';
+    document.getElementById('statusMeta').textContent = err.message;
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', refresh);
+refresh();
+setInterval(refresh, 30000);
+</script>
 </body>
 </html>
