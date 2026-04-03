@@ -1,191 +1,132 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lambda Ping Dashboard</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ping dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
-    body { 
-      font-family: 'Inter', sans-serif; 
-      margin: 0; 
-      background: #0f172a; 
-      color: #e2e8f0;
-    }
-    .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-    h1 { font-size: clamp(2rem, 4vw, 2.5rem); margin-bottom: 1rem; color: #38bdf8; }
-    .setup { background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 16px; margin-bottom: 2rem; }
-    .label { 
-      font-size: 0.95rem; 
-      font-weight: 600; 
-      opacity: 0.9; 
-      margin-bottom: 0.5rem;
-    }
-    .value { font-size: 1.2rem; font-weight: 700; }
-    .grid { 
-      display: grid; 
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-      gap: 1.5rem; 
-      margin-bottom: 2rem;
-    }
-    .card { 
-      background: rgba(255,255,255,0.07); 
-      padding: 1.5rem; 
-      border-radius: 12px; 
-    }
-    .ok { color: #34d399; }
-    .down { color: #fca5a5; }
-
-    .chart { height: 300px; position: relative; background: rgba(255,255,255,0.03); border-radius: 16px; padding: 2rem; overflow: hidden; margin-bottom: 2rem; }
-    .bars { 
-      display: flex; 
-      align-items: flex-end; 
-      gap: 0.4px; 
-      height: 220px; 
-      padding: 1rem 0;
-    }
-    .bar { 
-      flex: none; 
-      width: 2px; 
-      border-radius: 1px 1px 0 0; 
-    }
-    .bar.ok { background: #34d399; }
-    .bar.missing { background: #fca5a5; }
-    .hours { 
-      display: flex; 
-      justify-content: space-between; 
-      font-size: 0.9rem; 
-      margin-top: 1rem;
-    }
-    .outages { 
-      background: rgba(255,255,255,0.07); 
-      padding: 1.5rem; 
-      border-radius: 12px; 
-    }
-    .empty { text-align: center; padding: 3rem; opacity: 0.7; }
+    :root{--bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;--offset:#f3f0ec;--border:#d4d1ca;--text:#28251d;--muted:#7a7974;--primary:#01696f;--success:#437a22;--error:#a12c7b;--warning:#da7101;--missing:#bab9b4;--shadow:0 12px 32px rgba(0,0,0,.06)}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1100px;margin:0 auto;padding:32px 16px 64px}.hero{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+    h1{margin:0;font-size:clamp(28px,4vw,42px)} .sub{color:var(--muted);max-width:70ch}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{grid-column:span 12;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)} .kpi{grid-column:span 3}.wide{grid-column:span 12}
+    .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{font-size:30px;font-weight:700;margin-top:8px}.status.up{color:var(--success)}.status.down{color:var(--error)}.status.missing{color:var(--warning)}
+    .meta{color:var(--muted);font-size:14px;margin-top:8px}.chart{display:flex;align-items:end;gap:3px;height:220px;padding-top:20px}.bar{flex:1;background:var(--primary);border-radius:4px 4px 0 0;opacity:.8}.bar.down{background:var(--error)}.bar.lossy{background:var(--warning)}.bar.missing{background:var(--missing);opacity:.6}
+    .table{width:100%;border-collapse:collapse;margin-top:12px}.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--offset);font-size:13px;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+    .refresh{padding:10px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:12px;cursor:pointer}@media (max-width:800px){.kpi{grid-column:span 12}}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Lambda Ping Dashboard</h1>
-    <p style="opacity:0.8">Consumme ta Lambda, détecte les interruptions internet (1 ping/minute, 24h glissant)</p>
-
-    <div class="setup">
-      <div class="label">Architecture en cours</div>
-      <div class="value">Serverless Lambda (NAT Gateway / API Gateway)</div>
+  <div class="wrap">
+    <div class="hero">
+      <div><h1>Ping dashboard</h1><div class="sub">Dashboard public GitHub Pages avec stats complètes 24 h (pings perdus + % global).</div></div>
+      <button class="refresh" id="refreshBtn">Rafraîchir</button>
     </div>
-
     <div class="grid">
-      <div class="card" id="status"></div>
-      <div class="card" id="latency"></div>
-      <div class="card" id="miss"></div>
+      <div class="card kpi"><div class="label">Statut</div><div class="value status" id="statusValue">—</div><div class="meta" id="statusMeta">En attente de données</div></div>
+      <div class="card kpi"><div class="label">Latence</div><div class="value" id="latencyValue">—</div><div class="meta">Moyenne du dernier cycle</div></div>
+      <div class="card kpi"><div class="label">Perte</div><div class="value" id="lossValue">—</div><div class="meta">Dernier cycle de ping</div></div>
+      <div class="card kpi"><div class="label">Pings perdus 24 h</div><div class="value" id="lostPingsValue">—</div><div class="meta" id="lostPingsMeta">Nombre total de pings</div></div>
+      <div class="card kpi"><div class="label">% Perte 24 h</div><div class="value" id="lossPctValue">—</div><div class="meta" id="lossPctMeta">Pourcentage global</div></div>
+      <div class="card wide"><div class="label">Historique 24 h</div><div class="chart" id="chart"></div></div>
+      <div class="card wide"><div class="label">Mesures récentes</div><table class="table"><thead><tr><th>Heure</th><th>Statut</th><th>Latence</th><th>Perte</th></tr></thead><tbody id="rows"></tbody></table></div>
     </div>
-
-    <div class="chart">
-      <div class="label" style="margin-bottom:0.5rem">Histogramme interruptions (1 barre = 1 minute)</div>
-      <div class="bars" id="bars"></div>
-      <div class="hours" id="hours"></div>
-    </div>
-
-    <div class="outages" id="outages"></div>
   </div>
+<script>
+const API_BASE_URL = 'https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-west-3.on.aws';
+const AGENT = 'home';
+const TARGET = 'www.google.com';
+const INTERVAL_MINUTES = 1;
+const PING_COUNT = 5;
 
-  <script>
-    // CONFIG - MODIFIER ICI
-    const API_ENDPOINT = 'https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-west-3.on.aws';
-    const AGENT = 'home';
-    const TARGET = 'www.google.com';
-    
-    async function getData() {
-      try {
-        const [latest, history] = await Promise.all([
-          fetch(`${API_ENDPOINT}/latest?agent=${AGENT}&target=${TARGET}`).then(r=>r.json()),
-          fetch(`${API_ENDPOINT}/history?agent=${AGENT}&target=${TARGET}&hours=24`).then(r=>r.json())
-        ]);
-        return { latest, history: history.items || [] };
-      } catch {
-        // Demo data
-        const now = Date.now();
-        return {
-          latest: { status: "up", latency: 25, packetLoss: 0 },
-          history: Array.from({ length: 1440 }, (_,i) => {
-            const t = now - i * 60 * 1000;
-            return {
-              checkedAt: new Date(t).toISOString(),
-              status: "up",
-              latencyMs: 20 + Math.random() * 15
-            };
-          })
-        };
-      }
+async function getJson(path){const res=await fetch(`${API_BASE_URL}${path}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}
+function fmtDate(s){return new Date(s).toLocaleString('fr-FR');}
+function statusLabel(item){if(item.missing)return 'Données manquantes'; if(item.status==='down') return 'Hors ligne'; if((item.packetLoss||0)>0) return 'Dégradé'; return 'En ligne';}
+function statusClass(item){if(item.missing)return 'missing'; if(item.status==='down') return 'down'; if((item.packetLoss||0)>0) return 'missing'; return 'up';}
+
+function renderLatest(item){
+  const s=document.getElementById('statusValue'), m=document.getElementById('statusMeta'), l=document.getElementById('latencyValue'), p=document.getElementById('lossValue');
+  if(!item){s.textContent='Aucune donnée';s.className='value status';m.textContent='Aucune mesure trouvée';l.textContent='—';p.textContent='—';return;}
+  s.textContent=statusLabel(item); s.className=`value status ${statusClass(item)}`;
+  m.textContent=`Dernière mesure : ${fmtDate(item.checkedAt)}`;
+  l.textContent=item.latencyMs!=null?`${Math.round(item.latencyMs)} ms`:'—';
+  p.textContent=item.packetLoss!=null?`${item.packetLoss} %`:'—';
+}
+
+function buildTimeline(items){
+  const byMinute = new Map(items.map(x => [new Date(x.checkedAt).toISOString().slice(0,16), x]));
+  const now = new Date();
+  const timeline = [];
+  for(let i=24*60-1;i>=0;i-=INTERVAL_MINUTES){
+    const d = new Date(now.getTime() - i*60000);
+    d.setSeconds(0,0);
+    const key = d.toISOString().slice(0,16);
+    if(byMinute.has(key)) timeline.push(byMinute.get(key));
+    else timeline.push({checkedAt:d.toISOString(), missing:true, status:'down', latencyMs:null, packetLoss:null});
+  }
+  return timeline;
+}
+
+function computeStats(timeline){
+  let totalLost = 0;
+  let totalPings = 0;
+  for(const item of timeline){
+    if(item.missing){
+      totalLost += PING_COUNT;
+      totalPings += PING_COUNT;
+      continue;
     }
+    const lossPct = Number(item.packetLoss || 0);
+    const cycleLost = Math.round((lossPct / 100) * PING_COUNT);
+    totalLost += cycleLost;
+    totalPings += PING_COUNT;
+  }
+  const lossPct = totalPings > 0 ? Math.round((totalLost / totalPings) * 100) : 0;
+  return {totalLost, totalPings, lossPct};
+}
 
-    function renderData({ latest, history }) {
-      document.getElementById("status").innerHTML = `
-        <div class="label">Statut</div>
-        <div class="value ${latest.status === "down" ? "down" : "ok"}">${latest.status === "down" ? "DOWN" : "UP"}</div>
-      `;
-      document.getElementById("latency").innerHTML = `
-        <div class="label">Latence</div>
-        <div class="value">${latest.latencyMs || '?'} ms</div>
-      `;
-      document.getElementById("miss").innerHTML = `
-        <div class="label">Données manquantes</div>
-        <div class="value">${history.filter(h=>!h).length} / 1440</div>
-      `;
+function renderHistory(items){
+  const chart=document.getElementById('chart'), rows=document.getElementById('rows'); chart.innerHTML=''; rows.innerHTML='';
+  const timeline = buildTimeline(items);
+  const visible = timeline.slice(-180);
+  const stats = computeStats(timeline);
+  const maxLatency=Math.max(50,...timeline.map(x=>x.latencyMs||0));
 
-      // Histogramme 1440 barres (1 barre = 1 minute)
-      const bars = document.getElementById("bars");
-      bars.innerHTML = "";
-      history.forEach(item => {
-        const bar = document.createElement("div");
-        bar.className = "bar " + (item ? "ok" : "missing");
-        bar.title = item ? new Date(item.checkedAt).toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "MANQUANT";
-        bars.appendChild(bar);
-      });
+  document.getElementById('lostPingsValue').textContent = String(stats.totalLost);
+  document.getElementById('lostPingsMeta').textContent = `Sur ${stats.totalPings} pings (24 h)`;
+  document.getElementById('lossPctValue').textContent = `${stats.lossPct} %`;
+  document.getElementById('lossPctMeta').textContent = `Perte globale sur la journée`;
 
-      // Heures 00:00-23:00 (toutes les 60 barres)
-      const hours = document.getElementById("hours");
-      hours.innerHTML = "";
-      for(let h = 0; h < 24; h++) {
-        const label = document.createElement("div");
-        label.textContent = `${h.toString().padStart(2,'0')}:00`;
-        label.style.left = `${(h/24)*100}%`;
-        hours.appendChild(label);
-      }
+  visible.forEach(item=>{
+    const bar=document.createElement('div');
+    let cls='bar'; let h=8;
+    if(item.missing){cls+=' missing'; h=20;}
+    else if(item.status==='down' || item.packetLoss===100){cls+=' down'; h=100;}
+    else if((item.packetLoss||0)>0){cls+=' lossy'; h=Math.max(12,Math.round(((item.latencyMs||0)/maxLatency)*100));}
+    else {h=Math.max(6,Math.round(((item.latencyMs||0)/maxLatency)*100));}
+    bar.className=cls; bar.style.height=`${h}%`; bar.title=`${fmtDate(item.checkedAt)} — ${statusLabel(item)} — ${item.latencyMs??'—'} ms — ${item.packetLoss??'—'} %`; chart.appendChild(bar);
+  });
+  timeline.filter(x=>!x.missing).slice().reverse().slice(0,20).forEach(item=>{
+    const tr=document.createElement('tr');
+    const color=item.status==='down' || item.packetLoss===100?'var(--error)':((item.packetLoss||0)>0?'var(--warning)':'var(--success)');
+    tr.innerHTML=`<td>${fmtDate(item.checkedAt)}</td><td><span class="badge" style="color:${color}"><span class="dot"></span>${statusLabel(item)}</span></td><td>${item.latencyMs!=null?Math.round(item.latencyMs)+' ms':'—'}</td><td>${item.packetLoss!=null?item.packetLoss+' %':'—'}</td>`;
+    rows.appendChild(tr);
+  });
+}
 
-      // Coupures (≥2 minutes manquantes)
-      const outages = [];
-      let outageStart = null;
+async function refresh(){
+  try{
+    const latest=await getJson(`/latest?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}`);
+    const history=await getJson(`/history?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}&hours=24`);
+    renderLatest(latest.item); renderHistory(history.items||[]);
+  }catch(err){console.error(err);document.getElementById('statusValue').textContent='Erreur';document.getElementById('statusMeta').textContent=err.message;}
+}
 
-      for(let i = 0; i < history.length; i++) {
-        if(!history[i]) {
-          if(outageStart === null) outageStart = i;
-        } else if(outageStart !== null && i - outageStart >= 2) {
-          outages.push({
-            start: new Date(history[outageStart].checkedAt).toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-            end: new Date(history[i-1].checkedAt).toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-            duration: (i - outageStart) + " min"
-          });
-          outageStart = null;
-        }
-      }
-
-      const container = document.getElementById("outages");
-      container.innerHTML = outages.length 
-        ? `<div class="label">Coupures détectées (≥2 minutes)</div>${outages.map(o=>`
-          <div style="padding:0.8rem;display:flex;justify-content:space-between;background:rgba(255,255,255,0.05);border-radius:8px;margin-top:0.5rem">${o.duration}: ${o.start} → ${o.end}</div>`).join("")}`
-        : "<div class=\"empty\">✅ Aucune interruption prolongée détectée</div>";
-    }
-
-    async function refresh() {
-      const data = await getData();
-      renderData(data);
-    }
-
-    refresh();
-    setInterval(refresh, 60000); // 1 minute
-  </script>
+document.getElementById('refreshBtn').addEventListener('click', refresh); refresh(); setInterval(refresh, 30000);
+</script>
 </body>
 </html>
