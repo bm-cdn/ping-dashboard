@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ping dashboard</title>
+  <title>Ping dashboard live</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,35 +14,38 @@
     h1{margin:0;font-size:clamp(28px,4vw,42px)} .sub{color:var(--muted);max-width:70ch}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
     .card{grid-column:span 12;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)} .kpi{grid-column:span 3}.wide{grid-column:span 12}
     .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{font-size:30px;font-weight:700;margin-top:8px}.status.up{color:var(--success)}.status.down{color:var(--error)}.status.missing{color:var(--warning)}
-    .meta{color:var(--muted);font-size:14px;margin-top:8px}.chart{display:flex;align-items:end;gap:3px;height:220px;padding-top:20px}.bar{flex:1;background:var(--primary);border-radius:4px 4px 0 0;opacity:.8}.bar.down{background:var(--error)}.bar.lossy{background:var(--warning)}.bar.missing{background:var(--missing);opacity:.6}
+    .meta{color:var(--muted);font-size:14px;margin-top:8px}.chart{display:flex;align-items:end;gap:1px;height:200px;padding-top:20px;overflow:hidden}.bar{flex:1;background:var(--primary);border-radius:2px 2px 0 0;opacity:.8;transition:all 0.3s ease}.bar.down{background:var(--error)}.bar.lossy{background:var(--warning)}.bar.missing{background:var(--missing);opacity:.4}
     .table{width:100%;border-collapse:collapse;margin-top:12px}.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
     .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--offset);font-size:13px;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
     .refresh{padding:10px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:12px;cursor:pointer}
     .outages-list{max-height:200px;overflow:auto;margin-top:12px}
-    .outage-item{padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface-2)}
+    .outage-item{padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface-2);animation:fadeIn 0.3s ease}
     .outage-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
     .outage-duration{font-size:24px;font-weight:700;color:var(--error)}
     .outage-times{font-size:14px;color:var(--muted)}
     #noOutages{padding:20px;color:var(--muted);text-align:center}
-    @media (max-width:800px){.kpi{grid-column:span 12}}
+    .live-indicator{position:absolute;top:10px;right:10px;background:var(--primary);color:white;padding:4px 8px;border-radius:20px;font-size:12px;animation:pulse 2s infinite}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+    @media (max-width:800px){.kpi{grid-column:span 12}.chart{gap:0.5px}}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hero">
-      <div><h1>Ping dashboard</h1><div class="sub">Toutes les coupures de la journée avec heure de début/fin et durée exacte.</div></div>
-      <button class="refresh" id="refreshBtn">Rafraîchir</button>
+      <div><h1>Ping dashboard <span class="live-indicator" id="liveIndicator">LIVE</span></h1><div class="sub">Live 24h avec toutes les coupures détectées et histogramme temps réel.</div></div>
+      <button class="refresh" id="refreshBtn">↻ Rafraîchir</button>
     </div>
     <div class="grid">
-      <div class="card kpi"><div class="label">Statut</div><div class="value status" id="statusValue">—</div><div class="meta" id="statusMeta">En attente de données</div></div>
-      <div class="card kpi"><div class="label">Latence</div><div class="value" id="latencyValue">—</div><div class="meta">Moyenne du dernier cycle</div></div>
-      <div class="card kpi"><div class="label">Perte</div><div class="value" id="lossValue">—</div><div class="meta">Dernier cycle de ping</div></div>
-      <div class="card kpi"><div class="label">Coupures 24 h</div><div class="value" id="outageCountValue">0</div><div class="meta" id="outageCountMeta">Nombre total détecté</div></div>
-      <div class="card wide"><div class="label">Historique 24 h</div><div class="chart" id="chart"></div></div>
+      <div class="card kpi"><div class="label">Statut</div><div class="value status" id="statusValue">—</div><div class="meta" id="statusMeta">En attente</div></div>
+      <div class="card kpi"><div class="label">Latence</div><div class="value" id="latencyValue">—</div><div class="meta">Dernier cycle</div></div>
+      <div class="card kpi"><div class="label">Perte</div><div class="value" id="lossValue">—</div><div class="meta">Dernier cycle</div></div>
+      <div class="card kpi"><div class="label">Coupures 24h</div><div class="value" id="outageCountValue">0</div><div class="meta" id="outageCountMeta">Total détecté</div></div>
+      <div class="card wide"><div class="label">Live histogramme 24h (1 barre = 1 min)</div><div class="chart" id="chart"></div></div>
       <div class="card wide">
-        <div class="label">Toutes les coupures</div>
+        <div class="label">Détail coupures</div>
         <div class="outages-list" id="outagesList"></div>
-        <div id="noOutages">Aucune coupure détectée sur 24 h</div>
+        <div id="noOutages">Aucune coupure sur 24h</div>
       </div>
     </div>
   </div>
@@ -54,19 +57,20 @@ const TARGET = 'www.google.com';
 const INTERVAL_MINUTES = 1;
 const PING_COUNT = 5;
 const OUTAGE_THRESHOLD_MINUTES = 2;
+let refreshInterval;
 
-async function getJson(path){const res=await fetch(`${API_BASE_URL}${path}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}
+async function getJson(path){try{const res=await fetch(`${API_BASE_URL}${path}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}catch(e){return null;}}
 function fmtDate(s){return new Date(s).toLocaleString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 function fmtDuration(minutes){return minutes===1?'1 min':`${minutes} min`;}
-function statusLabel(item){if(item.missing)return 'Données manquantes'; if(item.status==='down') return 'Hors ligne'; if((item.packetLoss||0)>0) return 'Dégradé'; return 'En ligne';}
-function statusClass(item){if(item.missing)return 'missing'; if(item.status==='down') return 'down'; if((item.packetLoss||0)>0) return 'missing'; return 'up';}
+function statusLabel(item){if(item?.missing)return 'Données manquantes'; if(item?.status==='down') return 'Hors ligne'; if((item?.packetLoss||0)>0) return 'Dégradé'; return 'En ligne';}
+function statusClass(item){if(item?.missing)return 'missing'; if(item?.status==='down') return 'down'; if((item?.packetLoss||0)>0) return 'lossy'; return 'up';}
 
 function renderLatest(item){
   const s=document.getElementById('statusValue'), m=document.getElementById('statusMeta'), l=document.getElementById('latencyValue'), p=document.getElementById('lossValue');
   if(!s || !m || !l || !p) return;
-  if(!item){s.textContent='Aucune donnée';s.className='value status';m.textContent='Aucune mesure trouvée';l.textContent='—';p.textContent='—';return;}
+  if(!item){s.textContent='Aucune';s.className='value status';m.textContent='En attente...';l.textContent='—';p.textContent='—';return;}
   s.textContent=statusLabel(item); s.className=`value status ${statusClass(item)}`;
-  m.textContent=`Dernière mesure : ${fmtDate(item.checkedAt)}`;
+  m.textContent=`Live : ${fmtDate(item.checkedAt)}`;
   l.textContent=item.latencyMs!=null?`${Math.round(item.latencyMs)} ms`:'—';
   p.textContent=item.packetLoss!=null?`${item.packetLoss} %`:'—';
 }
@@ -99,7 +103,7 @@ function renderOutages(outages){
   if(!list || !noOutages || !countEl || !countMeta) return;
 
   countEl.textContent = outages.length;
-  countMeta.textContent = outages.length === 1 ? 'coupure détectée' : 'coupures détectées';
+  countMeta.textContent = outages.length === 1 ? 'coupure live' : 'coupures live';
 
   if(outages.length === 0){
     noOutages.style.display = 'block';
@@ -109,7 +113,7 @@ function renderOutages(outages){
 
   noOutages.style.display = 'none';
   list.style.display = 'block';
-  list.innerHTML = outages.slice().reverse().map(outage => `
+  list.innerHTML = outages.slice().reverse().map((outage,i) => `
     <div class="outage-item">
       <div class="outage-header">
         <span class="outage-duration">${fmtDuration(outage.duration)}</span>
@@ -119,63 +123,91 @@ function renderOutages(outages){
   `).join('');
 }
 
-function buildTimeline(items){
+function buildLiveTimeline(items){
   const byMinute = new Map(items.map(x => [new Date(x.checkedAt).toISOString().slice(0,16), x]));
   const now = new Date();
   const timeline = [];
-  for(let i=24*60-1;i>=0;i-=1){
+  for(let i=1439;i>=0;i--){  // 24h = 1440 minutes
     const d = new Date(now.getTime() - i*60000);
     d.setSeconds(0,0);
     const key = d.toISOString().slice(0,16);
-    if(byMinute.has(key)) timeline.push(byMinute.get(key));
-    else timeline.push({checkedAt:d.toISOString(), missing:true, status:'down', latencyMs:null, packetLoss:null});
+    const data = byMinute.get(key);
+    timeline.push(data || {checkedAt:d.toISOString(), missing:true, status:'down', latencyMs:null, packetLoss:100});
   }
   return timeline;
 }
 
-function renderHistory(items){
-  const chart=document.getElementById('chart');
-  const rows=document.getElementById('rows');
-  if(!chart || !rows) return;
+function renderLiveChart(timeline){
+  const chart = document.getElementById('chart');
+  if(!chart) return;
   chart.innerHTML = '';
+
+  // Show last 6h (360 minutes) for readability
+  const recent = timeline.slice(-360);
+  const maxHeight = 100;
+
+  recent.forEach(item => {
+    const bar = document.createElement('div');
+    let cls = 'bar';
+    let height = 10;
+
+    if(item.missing || item.status==='down' || (item.packetLoss||0)===100){
+      cls += ' down missing';
+      height = maxHeight;
+    } else if((item.packetLoss||0)>0){
+      cls += ' lossy';
+      height = 30 + (item.packetLoss||0);
+    } else {
+      height = Math.max(8, Math.min(25, (item.latencyMs||20)/2));
+    }
+
+    bar.className = cls;
+    bar.style.height = `${height}px`;
+    bar.title = `${new Date(item.checkedAt).toLocaleString('fr-FR',{hour:'2-digit',minute:'2-digit'})} - ${statusLabel(item)}`;
+    chart.appendChild(bar);
+  });
+}
+
+function renderHistory(items){
+  const rows = document.getElementById('rows');
+  if(!rows) return;
   rows.innerHTML = '';
 
-  const timeline = buildTimeline(items);
+  const timeline = buildLiveTimeline(items || []);
   const outages = findOutages(timeline);
   renderOutages(outages);
+  renderLiveChart(timeline);
 
-  const visible = timeline.slice(-180);
-  const maxLatency=Math.max(50,...timeline.map(x=>x.latencyMs||0));
-
-  visible.forEach(item=>{
-    const bar=document.createElement('div');
-    let cls='bar'; let h=8;
-    if(item.missing){cls+=' missing'; h=20;}
-    else if(item.status==='down' || (item.packetLoss||0)===100){cls+=' down'; h=100;}
-    else if((item.packetLoss||0)>0){cls+=' lossy'; h=Math.max(12,Math.round(((item.latencyMs||0)/maxLatency)*100));}
-    else {h=Math.max(6,Math.round(((item.latencyMs||0)/maxLatency)*100));}
-    bar.className=cls; bar.style.height=`${h}%`; bar.title=`${fmtDate(item.checkedAt)} — ${statusLabel(item)} — ${item.latencyMs??'—'} ms — ${item.packetLoss??'—'} %`; chart.appendChild(bar);
-  });
-
-  timeline.filter(x=>!x.missing).slice().reverse().slice(0,20).forEach(item=>{
-    const tr=document.createElement('tr');
-    const color=item.status==='down' || (item.packetLoss||0)===100?'var(--error)':((item.packetLoss||0)>0?'var(--warning)':'var(--success)');
-    tr.innerHTML=`<td>${fmtDate(item.checkedAt)}</td><td><span class="badge" style="color:${color}"><span class="dot"></span>${statusLabel(item)}</span></td><td>${item.latencyMs!=null?Math.round(item.latencyMs)+' ms':'—'}</td><td>${item.packetLoss!=null?item.packetLoss+' %':'—'}</td>`;
+  // Recent table (last 20)
+  timeline.slice(-20).forEach(item => {
+    const tr = document.createElement('tr');
+    const color = item.missing || item.status==='down' || (item.packetLoss||0)===100 ? 'var(--error)' : ((item.packetLoss||0)>0 ? 'var(--warning)' : 'var(--success)');
+    tr.innerHTML = `<td>${fmtDate(item.checkedAt)}</td><td><span class="badge" style="color:${color}"><span class="dot"></span>${statusLabel(item)}</span></td><td>${item.latencyMs!=null?Math.round(item.latencyMs)+' ms':'—'}</td><td>${item.packetLoss!=null?item.packetLoss+' %':'—'}</td>`;
     rows.appendChild(tr);
   });
 }
 
 async function refresh(){
+  const liveIndicator = document.getElementById('liveIndicator');
+  if(liveIndicator) liveIndicator.textContent = 'LIVE ⏳';
+
   try{
-    const latest=await getJson(`/latest?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}`);
-    const history=await getJson(`/history?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}&hours=24`);
-    renderLatest(latest.item); renderHistory(history.items||[]);
-  }catch(err){console.error(err);const s=document.getElementById('statusValue');if(s){s.textContent='Erreur';}}
+    const [latest, history] = await Promise.all([
+      getJson(`/latest?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}`),
+      getJson(`/history?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}&hours=24`)
+    ]);
+
+    renderLatest(latest?.item);
+    renderHistory(history?.items);
+
+    if(liveIndicator) liveIndicator.textContent = `LIVE ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
+  }catch(err){
+    console.error('Refresh error:', err);
+  }
 }
 
-document.getElementById('refreshBtn')?.addEventListener('click', refresh); 
-refresh(); 
-setInterval(refresh, 30000);
+document.getElementById('refreshBtn')?.addEventListener('click', refresh);
+refreshInterval = setInterval(refresh, 30000); // 30s live update
 });
 </script>
 </body>
