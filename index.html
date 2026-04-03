@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ping dashboard avec heures</title>
+  <title>Ping dashboard 2 pings rouge</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root{--bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;--offset:#f3f0ec;--border:#d4d1ca;--text:#28251d;--muted:#7a7974;--primary:#01696f;--success:#437a22;--error:#a12c7b;--warning:#da7101;--missing:#bab9b4;--shadow:0 12px 32px rgba(0,0,0,.06)}
@@ -14,17 +14,15 @@
     .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{font-size:30px;font-weight:700;margin-top:8px}.status.up{color:var(--success)}.status.down{color:var(--error)}.status.missing{color:var(--warning)}
     .meta{color:var(--muted);font-size:14px;margin-top:8px}
 
-    /* HISTOGRAMME + HEURES */
     .histogram-container{position:relative;margin-top:16px}
-    .live-chart{display:flex;align-items:end;gap:0;height:220px;overflow-x:auto;background:var(--surface-2);border-radius:12px;padding:20px 0;border:1px solid var(--border)}
-    .live-bar{width:1px;flex:none;background:var(--primary);border-radius:1px 1px 0 0;transition:height 0.3s ease}
+    .live-chart{display:flex;align-items:end;gap:0.5px;height:220px;overflow-x:auto;background:var(--surface-2);border-radius:12px;padding:20px 0;border:1px solid var(--border)}
+    .live-bar{width:2px;flex:none;background:var(--primary);border-radius:2px 2px 0 0;transition:height 0.3s ease}
     .live-bar.down{background:var(--error);height:100% !important}
     .live-bar.lossy{background:var(--warning);height:70% !important}
     .live-bar.missing{background:var(--missing);height:90% !important}
 
-    /* HEURES SOUS HISTOGRAMME */
     .hours-labels{position:absolute;bottom:-32px;left:20px;right:20px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--text);pointer-events:none}
-    .hour-label{padding:0 4px;background:var(--surface);border-radius:6px}
+    .hour-label{padding:0 6px;background:var(--surface);border-radius:6px}
 
     .refresh{padding:10px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:12px;cursor:pointer}
     .outages-list{max-height:200px;overflow:auto;margin-top:12px}
@@ -40,17 +38,17 @@
 <body>
   <div class="wrap">
     <div class="hero">
-      <div><h1>Ping dashboard <span class="live-badge" id="liveBadge">Chargement...</span></h1><div class="sub">1440 barres (1min) + HEURES 00:00-23:00 sous histogramme.</div></div>
+      <div><h1>Ping dashboard <span class="live-badge" id="liveBadge">Chargement...</span></h1><div class="sub">720 barres (2min) = 2 pings consécutifs failed → ROUGE.</div></div>
       <button class="refresh" id="refreshBtn">↻ 1min</button>
     </div>
     <div class="grid">
       <div class="card kpi"><div class="label">Statut</div><div class="value status" id="statusValue">—</div><div class="meta" id="statusMeta">Live</div></div>
       <div class="card kpi"><div class="label">Latence</div><div class="value" id="latencyValue">—</div><div class="meta">Live</div></div>
       <div class="card kpi"><div class="label">Perte</div><div class="value" id="lossValue">—</div><div class="meta">Live</div></div>
-      <div class="card kpi"><div class="label">Coupures 24h</div><div class="value" id="outageCountValue">0</div><div class="meta" id="outageCountMeta">Total</div></div>
+      <div class="card kpi"><div class="label">Coupures 24h</div><div class="value" id="outageCountValue">0</div><div class="meta" id="outageCountMeta">≥4min</div></div>
 
       <div class="card wide">
-        <div class="label">Histogramme 24h (1440 barres × 1min) <span style="font-size:11px;color:var(--muted)">scroll → dernières heures</span></div>
+        <div class="label">Histogramme 24h (720 barres × 2min/2pings) <span style="font-size:11px;color:var(--muted)">2 pings failed = ROUGE</span></div>
         <div class="histogram-container">
           <div class="live-chart" id="liveChart"></div>
           <div class="hours-labels" id="hoursLabels"></div>
@@ -58,9 +56,9 @@
       </div>
 
       <div class="card wide">
-        <div class="label">Coupures détectées (≥2min)</div>
+        <div class="label">Coupures (≥4min = 2 barres rouges consécutives)</div>
         <div class="outages-list" id="outagesList"></div>
-        <div id="noOutages">✅ Aucune coupure sur 24h</div>
+        <div id="noOutages">✅ Aucune coupure sérieuse</div>
       </div>
     </div>
   </div>
@@ -71,61 +69,139 @@ const AGENT = 'home';
 const TARGET = 'www.google.com';
 let refreshTimer;
 
-function fmtTime(s){return new Date(s).toLocaleString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function getStatusClass(item){
-  if(item?.missing || item?.status==='down' || (item?.packetLoss||0)>=100) return 'down';
-  if((item?.packetLoss||0)>0) return 'lossy';
-  return 'up';
-}
+function fmtTime(s){return new Date(s).toISOString().slice(11,16);}
+function getStatusClass(item){return item.isFailed?'down':item.packetLoss>0?'lossy':'up';}
 
-function createLiveBar(item){
+function createLiveBar(item, index){
   const bar = document.createElement('div');
-  bar.className = 'live-bar';
+  bar.className = `live-bar ${getStatusClass(item)}`;
 
-  let height = '6px';
-  if(item.missing || item.status==='down' || (item.packetLoss||0)>=100){
-    bar.classList.add('down');
+  let height = '10px';
+  if(item.isFailed){
     height = '100%';
-  } else if((item.packetLoss||0)>0){
-    bar.classList.add('lossy');
-    height = '55%';
+  } else if(item.packetLoss>0){
+    height = '65%';
   } else {
-    height = `${Math.max(3, Math.min(25, (item.latencyMs||15)/2))}px`;
+    height = `${Math.max(6, Math.min(35, (item.latencyMs||25)/1.2))}px`;
   }
 
   bar.style.height = height;
-  bar.title = `${fmtTime(item.checkedAt)} - ${item.status==='down'?'ߚ렄OWN':(item.packetLoss||0)>0?`⚠️ ${(item.packetLoss||0)}%`:`✅ ${item.latencyMs||15}ms`}`;
+  bar.title = `${fmtTime(item.time)} ${index+1} | ${item.isFailed?'ߚ렲/2 pings failed':'✅ OK'}${item.packetLoss>0?' ⚠️ '+item.packetLoss+'%':''} | ${item.latencyMs||'?'}ms`;
   return bar;
 }
 
 function createHoursLabels(){
   const labels = document.getElementById('hoursLabels');
   if(!labels) return;
-
   labels.innerHTML = '';
-  for(let h=0; h<24; h++){
+  for(let h=0;h<24;h++){
     const label = document.createElement('div');
     label.className = 'hour-label';
     label.textContent = `${h.toString().padStart(2,'0')}:00`;
+    label.style.position = 'absolute';
     label.style.left = `${(h/24)*100}%`;
     labels.appendChild(label);
   }
 }
 
-function renderLiveHistogram(timeline){
+function buildBiPingTimeline(historyItems){
+  const byMinute = new Map(historyItems.map(x => [new Date(x.checkedAt).toISOString().slice(0,16), x]));
+  const now = new Date();
+  const biPingBars = [];
+
+  for(let i=719;i>=0;i--){
+    // Barre n°i = minutes (i*2+1) et (i*2+2)
+    const minute1Time = now.getTime() - (i*2 + 1)*60000;
+    const minute2Time = now.getTime() - i*2*60000;
+
+    const m1Key = new Date(minute1Time).toISOString().slice(0,16);
+    const m2Key = new Date(minute2Time).toISOString().slice(0,16);
+
+    const ping1 = byMinute.get(m1Key);
+    const ping2 = byMinute.get(m2Key);
+
+    // 2 pings consécutifs failed → ROUGE
+    const ping1Failed = !ping1 || ping1.status==='down' || (ping1.packetLoss||0)===100;
+    const ping2Failed = !ping2 || ping2.status==='down' || (ping2.packetLoss||0)===100;
+
+    const bar = {
+      time: m2Key,
+      index: 719-i,
+      isFailed: ping1Failed && ping2Failed,  // 2/2 failed = ROUGE
+      latencyMs: Math.max((ping1?.latencyMs||999), (ping2?.latencyMs||999)),
+      packetLoss: Math.max((ping1?.packetLoss||0), (ping2?.packetLoss||0)),
+      pings: (ping1Failed?1:0) + (ping2Failed?1:0)
+    };
+
+    biPingBars.push(bar);
+  }
+
+  return biPingBars;
+}
+
+function renderLiveHistogram(biPingBars){
   const chart = document.getElementById('liveChart');
   if(!chart) return;
 
-  // 1440 barres complètes 24h
-  const fullTimeline = timeline.slice(-1440);
-  chart.innerHTML = '';
-
-  fullTimeline.forEach(item => {
-    chart.appendChild(createLiveBar(item));
-  });
-
-  // Scroll vers la droite (récent)
+  chart.innerHTML = biPingBars.map((bar, i) => createLiveBar(bar, i)).join('');
   chart.scrollLeft = chart.scrollWidth;
+}
+
+function findOutages(biPingBars){
+  const outages = [];
+  let outageStart = null;
+
+  for(let i=0; i<biPingBars.length; i++){
+    const bar = biPingBars[i];
+    if(bar.isFailed){
+      if(!outageStart) outageStart = {index:i, time:bar.time};
+    } else if(outageStart && i - outageStart.index >= 2){  // ≥4min = 2 barres rouges
+      outages.push({
+        start: outageStart.time,
+        end: biPingBars[i-1].time,
+        duration: (i - outageStart.index) * 2,  // minutes
+        bars: i - outageStart.index
+      });
+      outageStart = null;
+    }
+  }
+
+  if(outageStart){
+    outages.push({
+      start: outageStart.time,
+      end: new Date().toISOString(),
+      duration: (biPingBars.length - outageStart.index) * 2,
+      bars: biPingBars.length - outageStart.index
+    });
+  }
+
+  return outages.filter(o => o.duration >= 4);
+}
+
+function renderOutages(outages){
+  const list = document.getElementById('outagesList');
+  const noOutages = document.getElementById('noOutages');
+  const countEl = document.getElementById('outageCountValue');
+
+  countEl.textContent = outages.length;
+
+  if(outages.length === 0){
+    noOutages.style.display = 'block';
+    list.style.display = 'none';
+    return;
+  }
+
+  noOutages.style.display = 'none';
+  list.style.display = 'block';
+  list.innerHTML = outages.slice(-5).reverse().map(o => `
+    <div class="outage-item">
+      <div class="outage-header">
+        <span class="outage-duration">${o.duration} min</span>
+        <span class="outage-times">${fmtTime(o.start)} → ${fmtTime(o.end)}</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">${o.bars} barres rouges</div>
+    </div>
+  `).join('');
 }
 
 async function refresh(){
@@ -138,47 +214,28 @@ async function refresh(){
       getJson(`/history?agent=${encodeURIComponent(AGENT)}&target=${encodeURIComponent(TARGET)}&hours=24`)
     ]);
 
-    // Status live
     if(latestRes?.item){
       const item = latestRes.item;
       const s = document.getElementById('statusValue');
-      const l = document.getElementById('latencyValue');
-      const p = document.getElementById('lossValue');
-      const m = document.getElementById('statusMeta');
-
       s.textContent = item.status === 'down' ? 'ߚ렄OWN' : item.packetLoss > 0 ? `⚠️ ${item.packetLoss}%` : '✅ OK';
       s.className = `value status ${getStatusClass(item)}`;
-      l.textContent = item.latencyMs ? `${Math.round(item.latencyMs)} ms` : '—';
-      p.textContent = item.packetLoss ? `${item.packetLoss} %` : '0 %';
-      m.textContent = `Live ${fmtTime(item.checkedAt)}`;
+      document.getElementById('latencyValue').textContent = item.latencyMs ? `${Math.round(item.latencyMs)} ms` : '—';
+      document.getElementById('lossValue').textContent = item.packetLoss ? `${item.packetLoss} %` : '0 %';
+      document.getElementById('statusMeta').textContent = `Live ${fmtTime(item.checkedAt)}`;
     }
 
     if(historyRes?.items && historyRes.items.length > 0){
-      const timeline = buildTimeline(historyRes.items);
-      renderLiveHistogram(timeline);
+      const biPingBars = buildBiPingTimeline(historyRes.items);
+      renderLiveHistogram(biPingBars);
+      const outages = findOutages(biPingBars);
+      renderOutages(outages);
     }
 
     if(liveBadge) liveBadge.textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   }catch(err){
-    console.error('Refresh:', err);
+    console.error(err);
     if(liveBadge) liveBadge.textContent = '❌';
   }
-}
-
-function buildTimeline(historyItems){
-  const byMinute = new Map(historyItems.map(x => [new Date(x.checkedAt).toISOString().slice(0,16), x]));
-  const now = new Date();
-  const timeline = [];
-
-  for(let i=1439;i>=0;i--){
-    const d = new Date(now.getTime() - i*60000);
-    d.setSeconds(0,0);
-    const key = d.toISOString().slice(0,16);
-    const data = byMinute.get(key);
-    timeline.push(data || {checkedAt:d.toISOString(), missing:true, status:'down', latencyMs:null, packetLoss:100});
-  }
-
-  return timeline;
 }
 
 createHoursLabels();
@@ -189,7 +246,7 @@ document.getElementById('refreshBtn')?.addEventListener('click', () => {
 });
 
 refresh();
-refreshTimer = setInterval(refresh, 60000); // 1min auto
+refreshTimer = setInterval(refresh, 60000);
 
 async function getJson(path){
   try{
