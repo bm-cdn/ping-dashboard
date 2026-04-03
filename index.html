@@ -18,27 +18,35 @@
     .table{width:100%;border-collapse:collapse;margin-top:12px}.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
     .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--offset);font-size:13px;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
     .refresh{padding:10px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:12px;cursor:pointer}
-    .outage-badge{background:var(--error);color:white;font-weight:500;padding:8px 12px;border-radius:12px;margin:8px 0;display:flex;align-items:center;gap:8px}
+    .outages-list{max-height:200px;overflow:auto;margin-top:12px}
+    .outage-item{padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface-2)}
+    .outage-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .outage-duration{font-size:24px;font-weight:700;color:var(--error)}
+    .outage-times{font-size:14px;color:var(--muted)}
     @media (max-width:800px){.kpi{grid-column:span 12}}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hero">
-      <div><h1>Ping dashboard</h1><div class="sub">Dashboard public GitHub Pages avec détection des coupures Internet et plage horaire.</div></div>
+      <div><h1>Ping dashboard</h1><div class="sub">Toutes les coupures de la journée avec heure de début/fin et durée exacte.</div></div>
       <button class="refresh" id="refreshBtn">Rafraîchir</button>
     </div>
     <div class="grid">
       <div class="card kpi"><div class="label">Statut</div><div class="value status" id="statusValue">—</div><div class="meta" id="statusMeta">En attente de données</div></div>
       <div class="card kpi"><div class="label">Latence</div><div class="value" id="latencyValue">—</div><div class="meta">Moyenne du dernier cycle</div></div>
       <div class="card kpi"><div class="label">Perte</div><div class="value" id="lossValue">—</div><div class="meta">Dernier cycle de ping</div></div>
-      <div class="card kpi" id="outageCard" style="display:none"><div class="label">Coupure détectée</div><div class="value outage-badge" id="outageValue">—</div></div>
+      <div class="card kpi"><div class="label">Coupures 24 h</div><div class="value" id="outageCountValue">0</div><div class="meta" id="outageCountMeta">Nombre total détecté</div></div>
       <div class="card wide"><div class="label">Historique 24 h</div><div class="chart" id="chart"></div></div>
-      <div class="card wide"><div class="label">Mesures récentes</div><table class="table"><thead><tr><th>Heure</th><th>Statut</th><th>Latence</th><th>Perte</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="card wide">
+        <div class="label">Toutes les coupures</div>
+        <div class="outages-list" id="outagesList"></div>
+        <div id="noOutages" style="padding:20px;color:var(--muted);text-align:center;display:none">Aucune coupure détectée sur 24 h</div>
+      </div>
     </div>
   </div>
 <script>
-
+  
 const API_BASE_URL = 'https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-west-3.on.aws';
 const AGENT = 'home';
 const TARGET = 'www.google.com';
@@ -47,7 +55,8 @@ const PING_COUNT = 5;
 const OUTAGE_THRESHOLD_MINUTES = 2;
 
 async function getJson(path){const res=await fetch(`${API_BASE_URL}${path}`);if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}
-function fmtDate(s){return new Date(s).toLocaleString('fr-FR');}
+function fmtDate(s){return new Date(s).toLocaleString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function fmtDuration(minutes){return minutes===1?'1 min':`${minutes} min`;}
 function statusLabel(item){if(item.missing)return 'Données manquantes'; if(item.status==='down') return 'Hors ligne'; if((item.packetLoss||0)>0) return 'Dégradé'; return 'En ligne';}
 function statusClass(item){if(item.missing)return 'missing'; if(item.status==='down') return 'down'; if((item.packetLoss||0)>0) return 'missing'; return 'up';}
 
@@ -65,14 +74,46 @@ function findOutages(timeline){
   let outageStart = null;
   for(let i=0;i<timeline.length;i++){
     const item = timeline[i];
-    if(item.missing || item.status==='down' || item.packetLoss===100){
+    if(item.missing || item.status==='down' || (item.packetLoss||0)===100){
       if(!outageStart) outageStart = new Date(item.checkedAt);
-    } else if(outageStart && (new Date(item.checkedAt) - outageStart) / 60000 >= OUTAGE_THRESHOLD_MINUTES){
-      outages.push({start: outageStart, end: new Date(item.checkedAt), duration: Math.round((new Date(item.checkedAt) - outageStart) / 60000)});
+    } else if(outageStart && (new Date(item.checkedAt) - outageStart)/60000 >= OUTAGE_THRESHOLD_MINUTES){
+      outages.push({
+        start: outageStart,
+        end: new Date(item.checkedAt),
+        duration: Math.round((new Date(item.checkedAt) - outageStart)/60000)
+      });
       outageStart = null;
     }
   }
+  if(outageStart) outages.push({start: outageStart, end: new Date(), duration: Math.round((new Date() - outageStart)/60000)});
   return outages;
+}
+
+function renderOutages(outages){
+  const list = document.getElementById('outagesList');
+  const noOutages = document.getElementById('noOutages');
+  const countEl = document.getElementById('outageCountValue');
+  const countMeta = document.getElementById('outageCountMeta');
+
+  countEl.textContent = outages.length;
+  countMeta.textContent = outages.length === 1 ? 'coupure détectée' : 'coupures détectées';
+
+  if(outages.length === 0){
+    noOutages.style.display = 'block';
+    list.style.display = 'none';
+    return;
+  }
+
+  noOutages.style.display = 'none';
+  list.style.display = 'block';
+  list.innerHTML = outages.slice().reverse().map(outage => `
+    <div class="outage-item">
+      <div class="outage-header">
+        <span class="outage-duration">${fmtDuration(outage.duration)}</span>
+        <span class="outage-times">${fmtDate(outage.start)} → ${fmtDate(outage.end)}</span>
+      </div>
+    </div>
+  `).join('');
 }
 
 function buildTimeline(items){
@@ -93,15 +134,7 @@ function renderHistory(items){
   const chart=document.getElementById('chart'), rows=document.getElementById('rows'); chart.innerHTML=''; rows.innerHTML='';
   const timeline = buildTimeline(items);
   const outages = findOutages(timeline);
-  const outageCard = document.getElementById('outageCard');
-
-  if(outages.length > 0){
-    const latestOutage = outages[outages.length-1];
-    document.getElementById('outageValue').textContent = `${fmtDate(latestOutage.start)} → ${Math.round(latestOutage.duration)} min`;
-    outageCard.style.display = 'block';
-  } else {
-    outageCard.style.display = 'none';
-  }
+  renderOutages(outages);
 
   const visible = timeline.slice(-180);
   const maxLatency=Math.max(50,...timeline.map(x=>x.latencyMs||0));
@@ -110,7 +143,7 @@ function renderHistory(items){
     const bar=document.createElement('div');
     let cls='bar'; let h=8;
     if(item.missing){cls+=' missing'; h=20;}
-    else if(item.status==='down' || item.packetLoss===100){cls+=' down'; h=100;}
+    else if(item.status==='down' || (item.packetLoss||0)===100){cls+=' down'; h=100;}
     else if((item.packetLoss||0)>0){cls+=' lossy'; h=Math.max(12,Math.round(((item.latencyMs||0)/maxLatency)*100));}
     else {h=Math.max(6,Math.round(((item.latencyMs||0)/maxLatency)*100));}
     bar.className=cls; bar.style.height=`${h}%`; bar.title=`${fmtDate(item.checkedAt)} — ${statusLabel(item)} — ${item.latencyMs??'—'} ms — ${item.packetLoss??'—'} %`; chart.appendChild(bar);
@@ -118,7 +151,7 @@ function renderHistory(items){
 
   timeline.filter(x=>!x.missing).slice().reverse().slice(0,20).forEach(item=>{
     const tr=document.createElement('tr');
-    const color=item.status==='down' || item.packetLoss===100?'var(--error)':((item.packetLoss||0)>0?'var(--warning)':'var(--success)');
+    const color=item.status==='down' || (item.packetLoss||0)===100?'var(--error)':((item.packetLoss||0)>0?'var(--warning)':'var(--success)');
     tr.innerHTML=`<td>${fmtDate(item.checkedAt)}</td><td><span class="badge" style="color:${color}"><span class="dot"></span>${statusLabel(item)}</span></td><td>${item.latencyMs!=null?Math.round(item.latencyMs)+' ms':'—'}</td><td>${item.packetLoss!=null?item.packetLoss+' %':'—'}</td>`;
     rows.appendChild(tr);
   });
