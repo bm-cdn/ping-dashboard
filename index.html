@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <script>
+    fetch("https://6f7dd4ufbsbm57usqmvt3m3tua0rzrxs.lambda-url.eu-west-3.on.aws/latest?agent=home&target=example.com")
+      .then(r => r.json())
+      .then(data => console.log("OK", data))
+      .catch(err => console.error("CORS ou réseau", err));
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ping Dashboard</title>
