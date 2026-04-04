@@ -150,7 +150,7 @@
     /* STATS TABLE */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin-top: 4px;
     }
@@ -293,11 +293,6 @@
               <div class="stat-val" id="lat30m">—</div>
               <div class="stat-sub">ms</div>
             </div>
-            <div class="stat-cell">
-              <div class="label">1 heure</div>
-              <div class="stat-val" id="lat1h">—</div>
-              <div class="stat-sub">ms</div>
-            </div>
           </div>
         </div>
         <div class="stat-row">
@@ -321,11 +316,6 @@
             <div class="stat-cell">
               <div class="label">30 minutes</div>
               <div class="stat-val" id="loss30m">—</div>
-              <div class="stat-sub">%</div>
-            </div>
-            <div class="stat-cell">
-              <div class="label">1 heure</div>
-              <div class="stat-val" id="loss1h">—</div>
               <div class="stat-sub">%</div>
             </div>
           </div>
@@ -352,6 +342,11 @@
           <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div> Perte partielle</div>
         </div>
       </div>
+
+
+
+
+
     </div>
   </div>
 
@@ -434,7 +429,6 @@
       const w5  = windowStats(5);
       const w15 = windowStats(15);
       const w30 = windowStats(30);
-      const w60 = windowStats(60);
 
       function setStatColor(el, val, isLoss) {
         el.style.color = '';
@@ -456,12 +450,12 @@
       el1mLoss.textContent = loss1mVal !== null ? loss1mVal : '—';
       setStatColor(el1mLoss, loss1mVal, true);
 
-      [['lat5m',w5],['lat15m',w15],['lat30m',w30],['lat1h',w60]].forEach(([id, w]) => {
+      [['lat5m',w5],['lat15m',w15],['lat30m',w30]].forEach(([id, w]) => {
         const el = document.getElementById(id);
         el.textContent = w.avgLat !== null ? w.avgLat : '—';
         setStatColor(el, w.avgLat, false);
       });
-      [['loss5m',w5],['loss15m',w15],['loss30m',w30],['loss1h',w60]].forEach(([id, w]) => {
+      [['loss5m',w5],['loss15m',w15],['loss30m',w30]].forEach(([id, w]) => {
         const el = document.getElementById(id);
         el.textContent = w.avgLoss !== null ? w.avgLoss : '—';
         setStatColor(el, w.avgLoss, true);
