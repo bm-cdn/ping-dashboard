@@ -19,10 +19,10 @@
     h1 { margin: 0; font-size: clamp(24px, 4vw, 38px); }
     .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
     .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-    .card { grid-column-span: 12; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
-    .kpi { grid-column-span: 3; }
-    .kpi2 { grid-column-span: 6; }
-    .wide { grid-column-span: 12; }
+    .card { grid-column: span 12; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
+    .kpi { grid-column: span 3; }
+    .kpi2 { grid-column: span 6; }
+    .wide { grid-column: span 12; }
     .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
     .value { font-size: 28px; font-weight: 700; margin-top: 8px; }
     .value.big { font-size: 36px; }
@@ -88,7 +88,7 @@
     .refresh { padding: 10px 14px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 12px; cursor: pointer; font-family: inherit; }
 
     @media (max-width: 800px) {
-      .kpi, .kpi2 { grid-column-span: 12; }
+      .kpi, .kpi2 { grid-column: span 12; }
     }
   </style>
 </head>
