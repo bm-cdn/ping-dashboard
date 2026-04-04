@@ -472,7 +472,8 @@
       document.getElementById("latence").textContent = avgLatency ? avgLatency + " ms" : "—";
 
       // Pings perdus 24h
-      const totalMissing = timeline.filter(x => x.missing || x.status === 'down').length;
+      const totalMissingRaw = timeline.filter(x => x.missing || x.status === 'down').length;
+      const totalMissing = Math.max(0, totalMissingRaw - 1);
       document.getElementById("pingsPerdus").textContent = totalMissing;
       document.getElementById("pingsMeta").textContent = `sur 1440 pings (${Math.round(totalMissing/1440*100)}% perte)`;
 
