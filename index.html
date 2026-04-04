@@ -398,7 +398,7 @@
           const duration = i - start;
           if (duration >= 2) {
             // end = première minute UP → la plage start→end = exactement `duration` minutes
-            outages.push({ start: timeline[start].checkedAt, end: timeline[i].checkedAt, duration });
+            outages.push({ start: timeline[start].checkedAt, end: timeline[i-1].checkedAt, duration });
           }
           start = null;
         }
