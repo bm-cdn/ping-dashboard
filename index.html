@@ -119,6 +119,25 @@
     .legend-item { display: flex; align-items: center; gap: 6px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
 
+    /* STATS TABLE */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .stat-cell {
+      background: var(--offset);
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-cell .stat-val { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .stat-cell .stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .stat-section-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; margin-top: 0; }
+    .stat-row { margin-bottom: 16px; }
+    .stat-row:last-child { margin-bottom: 0; }
+
     /* COUPURES */
     .outages-list { margin-top: 12px; }
     .outage-row {
@@ -179,6 +198,70 @@
         <div class="label">Coupures 24h</div>
         <div class="value big" id="nbCoupures">—</div>
         <div class="meta">Interruptions ≥ 2 min</div>
+      </div>
+
+      <!-- STATS MULTI-FENÊTRES -->
+      <div class="card wide">
+        <div class="stat-row">
+          <p class="stat-section-title">⚡ Latence moyenne</p>
+          <div class="stats-grid">
+            <div class="stat-cell">
+              <div class="label">1 minute</div>
+              <div class="stat-val" id="lat1m">—</div>
+              <div class="stat-sub">ms</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">5 minutes</div>
+              <div class="stat-val" id="lat5m">—</div>
+              <div class="stat-sub">ms</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">15 minutes</div>
+              <div class="stat-val" id="lat15m">—</div>
+              <div class="stat-sub">ms</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">30 minutes</div>
+              <div class="stat-val" id="lat30m">—</div>
+              <div class="stat-sub">ms</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">1 heure</div>
+              <div class="stat-val" id="lat1h">—</div>
+              <div class="stat-sub">ms</div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <p class="stat-section-title">ߓ栐acket loss</p>
+          <div class="stats-grid">
+            <div class="stat-cell">
+              <div class="label">1 minute</div>
+              <div class="stat-val" id="loss1m">—</div>
+              <div class="stat-sub">%</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">5 minutes</div>
+              <div class="stat-val" id="loss5m">—</div>
+              <div class="stat-sub">%</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">15 minutes</div>
+              <div class="stat-val" id="loss15m">—</div>
+              <div class="stat-sub">%</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">30 minutes</div>
+              <div class="stat-val" id="loss30m">—</div>
+              <div class="stat-sub">%</div>
+            </div>
+            <div class="stat-cell">
+              <div class="label">1 heure</div>
+              <div class="stat-val" id="loss1h">—</div>
+              <div class="stat-sub">%</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- HISTOGRAMME 1440 barres non scrollable -->
@@ -276,6 +359,39 @@
     function renderAll(latest, histItems) {
       const timeline = buildTimeline(histItems);
       const outages = detectOutages(timeline);
+
+      // Helper : calcul latence moy et packet loss sur N dernières minutes
+      function windowStats(n) {
+        const slice = timeline.slice(-n);
+        const valid = slice.filter(x => !x.missing && x.latencyMs != null);
+        const avgLat = valid.length ? Math.round(valid.reduce((a, b) => a + b.latencyMs, 0) / valid.length) : null;
+        const lossItems = slice.filter(x => !x.missing && x.packetLoss != null);
+        const avgLoss = lossItems.length ? Math.round(lossItems.reduce((a, b) => a + Number(b.packetLoss), 0) / lossItems.length) : null;
+        return { avgLat, avgLoss };
+      }
+      const w1  = windowStats(1);
+      const w5  = windowStats(5);
+      const w15 = windowStats(15);
+      const w30 = windowStats(30);
+      const w60 = windowStats(60);
+
+      function setStatColor(el, val, isLoss) {
+        el.style.color = '';
+        if (val === null) return;
+        if (isLoss) el.style.color = val === 0 ? 'var(--success)' : val < 10 ? 'var(--warning)' : 'var(--error)';
+        else el.style.color = val < 50 ? 'var(--success)' : val < 150 ? 'var(--warning)' : 'var(--error)';
+      }
+
+      [['lat1m',w1],['lat5m',w5],['lat15m',w15],['lat30m',w30],['lat1h',w60]].forEach(([id, w]) => {
+        const el = document.getElementById(id);
+        el.textContent = w.avgLat !== null ? w.avgLat : '—';
+        setStatColor(el, w.avgLat, false);
+      });
+      [['loss1m',w1],['loss5m',w5],['loss15m',w15],['loss30m',w30],['loss1h',w60]].forEach(([id, w]) => {
+        const el = document.getElementById(id);
+        el.textContent = w.avgLoss !== null ? w.avgLoss : '—';
+        setStatColor(el, w.avgLoss, true);
+      });
 
       // Statut live
       const statut = document.getElementById("statut");
