@@ -395,14 +395,20 @@
         const isDown = timeline[i].missing || timeline[i].status === 'down';
         if (isDown && start === null) start = i;
         if (!isDown && start !== null) {
-          if (i - start >= 2) {
-            outages.push({ start: timeline[start].checkedAt, end: timeline[i-1].checkedAt, duration: i - start });
+          const duration = i - start;
+          if (duration >= 2) {
+            // end = première minute UP → la plage start→end = exactement `duration` minutes
+            outages.push({ start: timeline[start].checkedAt, end: timeline[i].checkedAt, duration });
           }
           start = null;
         }
       }
+      // Coupure encore en cours à la fin de la fenêtre
       if (start !== null && timeline.length - start >= 2) {
-        outages.push({ start: timeline[start].checkedAt, end: timeline[timeline.length-1].checkedAt, duration: timeline.length - start });
+        const duration = timeline.length - start;
+        // Pas de minute UP connue : end = dernière minute + 1min
+        const lastTs = new Date(timeline[timeline.length - 1].checkedAt).getTime() + 60000;
+        outages.push({ start: timeline[start].checkedAt, end: new Date(lastTs).toISOString(), duration, ongoing: true });
       }
       return outages;
     }
@@ -581,7 +587,7 @@
           const durStr = h > 0 ? `${h}h ${m}min` : `${m} min`;
           return `<div class="outage-row">
             <div class="dur">${durStr}</div>
-            <div class="time">${fmtTime(o.start)} → ${fmtTime(o.end)}</div>
+            <div class="time">${fmtTime(o.start)} → ${o.ongoing ? '<span style="color:var(--error)">en cours</span>' : fmtTime(o.end)}</div>
           </div>`;
         }).join("");
       }
