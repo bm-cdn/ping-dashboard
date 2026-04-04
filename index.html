@@ -637,11 +637,11 @@
     const themeToggle = document.getElementById('themeToggle');
     const isDark = localStorage.getItem('pingDashboardDark') === 'true';
     if (isDark) document.body.classList.add('dark');
-    themeToggle.textContent = isDark ? '☀️' : 'ߌ駻
+    themeToggle.textContent = isDark ? '☀️' : '🌑'
     themeToggle.addEventListener('click', () => {
       document.body.classList.toggle('dark');
       const dark = document.body.classList.contains('dark');
-      themeToggle.textContent = dark ? '☀️' : 'ߌ駻
+      themeToggle.textContent = dark ? '☀️' : '🌑'
       localStorage.setItem('pingDashboardDark', dark);
     });
 
