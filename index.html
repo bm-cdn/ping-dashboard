@@ -436,10 +436,10 @@
 
       // Statut live
       const statut = document.getElementById("statut");
-      const label = statusLabel(latest.item);
+      const label = statusLabel(latestData.item);
       statut.textContent = label;
       statut.className = "value big status " + (label === "UP" ? "up" : "down");
-      document.getElementById("statutMeta").textContent = latest.item ? fmtTime(latest.item.checkedAt) : "—";
+      document.getElementById("statutMeta").textContent = latestData.item ? fmtTime(latestData.item.checkedAt) : "—";
 
       // Latence moy 1h (60 dernières minutes)
       const last60 = timeline.slice(-60).filter(x => !x.missing && x.latencyMs != null);
@@ -455,6 +455,7 @@
       document.getElementById("nbCoupures").textContent = outages.length;
 
       // HISTOGRAMME 1440 barres
+      const now = new Date();
       const chart = document.getElementById("chart");
       chart.innerHTML = "";
       // Lignes verticales toutes les heures (24 lignes)
