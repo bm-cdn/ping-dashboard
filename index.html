@@ -228,6 +228,12 @@
 
     <div class="grid">
 
+      <!-- DETAIL COUPURES (visible uniquement si coupures) -->
+      <div class="card wide" id="outagesCard" style="display:none; border-color: var(--error);">
+        <div class="label">🚨 Détail des coupures (≥ 2 min) — 24h</div>
+        <div class="outages-list" id="outagesList"></div>
+      </div>
+
       <!-- KPI 1 : Statut -->
       <div class="card kpi">
         <div class="label">Statut live</div>
@@ -254,6 +260,12 @@
         <div class="label">Coupures 24h</div>
         <div class="value big" id="nbCoupures">—</div>
         <div class="meta">Interruptions ≥ 2 min</div>
+      </div>
+
+      <!-- PERTES PARTIELLES (visible uniquement si pertes partielles) -->
+      <div class="card wide" id="lossyCard" style="display:none; border-color: var(--warning);">
+        <div class="label">⚠️ Pertes partielles — 24h</div>
+        <div class="lossy-list" id="lossyList"></div>
       </div>
 
       <!-- STATS MULTI-FENÊTRES -->
@@ -341,17 +353,9 @@
         </div>
       </div>
 
-      <!-- DETAIL COUPURES -->
-      <div class="card wide">
-        <div class="label">🚨 Détail des coupures (≥ 2 min) — 24h</div>
-        <div class="outages-list" id="outagesList"></div>
-      </div>
 
-      <!-- PERTES PARTIELLES -->
-      <div class="card wide">
-        <div class="label">⚠️ Pertes partielles (packet loss partiel) — 24h</div>
-        <div class="lossy-list" id="lossyList"></div>
-      </div>
+
+
 
     </div>
   </div>
@@ -561,11 +565,13 @@
       }
 
       // Pertes partielles (packetLoss > 0 et pas missing/down)
+      const lossyCard = document.getElementById("lossyCard");
       const lossyEl = document.getElementById("lossyList");
       const lossyItems = timeline.filter(x => !x.missing && x.status !== 'down' && Number(x.packetLoss) > 0);
       if (lossyItems.length === 0) {
-        lossyEl.innerHTML = "<div class='no-outages'>✅ Aucune perte partielle sur 24h</div>";
+        lossyCard.style.display = "none";
       } else {
+        lossyCard.style.display = "block";
         lossyEl.innerHTML = lossyItems.map(item => {
           const loss = Number(item.packetLoss);
           const lat = item.latencyMs ? Math.round(item.latencyMs) + " ms" : "—";
@@ -578,10 +584,12 @@
       }
 
       // Coupures détaillées
+      const outagesCard = document.getElementById("outagesCard");
       const list = document.getElementById("outagesList");
       if (outages.length === 0) {
-        list.innerHTML = "<div class='no-outages'>✅ Aucune coupure ≥ 2 min</div>";
+        outagesCard.style.display = "none";
       } else {
+        outagesCard.style.display = "block";
         list.innerHTML = outages.map(o => {
           const dur = o.duration;
           const h = Math.floor(dur / 60);
