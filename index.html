@@ -315,7 +315,7 @@
 
       <!-- DETAIL COUPURES -->
       <div class="card wide">
-        <div class="label">🚨 DÉTAIL DES COUPURES (≥ 2 MIN) — 24H</div>
+        <div class="label">ߚ蠄étail des coupures (≥ 2 min) — 24h</div>
         <div class="outages-list" id="outagesList"></div>
       </div>
 
@@ -475,11 +475,11 @@
         const bar = document.createElement("div");
         let cls = "bar", h;
         if (item.missing || item.status === 'down') {
-          cls = "missing"; h = 100;
+          cls = "bar missing"; h = 100;
         } else if (item.packetLoss > 0) {
-          cls = "lossy"; h = Math.max(20, Math.round(item.latencyMs / maxLatency * 100));
+          cls = "bar lossy"; h = Math.max(20, Math.round(item.latencyMs / maxLatency * 100));
         } else {
-          h = Math.max(10, Math.round((item.latencyMs || 20) / maxLatency * 100));
+          cls = "bar"; h = Math.max(10, Math.round((item.latencyMs || 20) / maxLatency * 100));
         }
         bar.className = cls;
         bar.style.height = h + "%";
@@ -494,7 +494,7 @@
       // Tooltip flottant
       const tooltip = document.getElementById("pingTooltip");
       chart.addEventListener("mousemove", e => {
-        const bar = e.target.closest(".bar, .missing, .lossy, .down");
+        const bar = e.target.closest(".bar");
         if (!bar || !bar.dataset.time) { tooltip.style.display = "none"; return; }
         const cls = bar.dataset.cls;
         const colorClass = cls === 'down' ? 'tt-down' : cls === 'warn' ? 'tt-warn' : 'tt-ok';
