@@ -69,6 +69,34 @@
     }
     .chart::before { top: 0; }
     .chart::after { top: 50%; }
+    /* ligne verticale heure */
+    .hour-line {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: rgba(0,0,0,0.12);
+      pointer-events: none;
+      z-index: 1;
+    }
+    /* tooltip flottant */
+    #pingTooltip {
+      position: fixed;
+      display: none;
+      background: #28251d;
+      color: #f9f8f5;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 1000;
+      line-height: 1.6;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      white-space: nowrap;
+    }
+    #pingTooltip .tt-time { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+    #pingTooltip .tt-ok { color: #6ecb3c; }
+    #pingTooltip .tt-down { color: #e05aaa; }
+    #pingTooltip .tt-warn { color: #f0a040; }
     .bar {
       flex: 1 1 0;
       min-width: 0;
@@ -429,6 +457,13 @@
       // HISTOGRAMME 1440 barres
       const chart = document.getElementById("chart");
       chart.innerHTML = "";
+      // Lignes verticales toutes les heures (24 lignes)
+      for (let h = 1; h < 24; h++) {
+        const line = document.createElement("div");
+        line.className = "hour-line";
+        line.style.left = (h / 24 * 100) + "%";
+        chart.appendChild(line);
+      }
       const maxLatency = Math.max(30, ...timeline.filter(x => x.latencyMs).map(x => x.latencyMs));
       // Mise à jour axe Y
       const yAxis = document.getElementById("yAxis");
@@ -447,9 +482,31 @@
         }
         bar.className = cls;
         bar.style.height = h + "%";
-        bar.title = fmtTime(item.checkedAt) + " · " + statusLabel(item) + (item.latencyMs ? " · " + Math.round(item.latencyMs) + "ms" : "");
+        bar.dataset.time = fmtTime(item.checkedAt);
+        bar.dataset.label = statusLabel(item);
+        bar.dataset.lat = item.latencyMs ? Math.round(item.latencyMs) + " ms" : "—";
+        bar.dataset.loss = item.packetLoss != null ? item.packetLoss + "%" : "—";
+        bar.dataset.cls = (item.missing || item.status === 'down') ? 'down' : item.packetLoss > 0 ? 'warn' : 'ok';
         chart.appendChild(bar);
       });
+
+      // Tooltip flottant
+      const tooltip = document.getElementById("pingTooltip");
+      chart.addEventListener("mousemove", e => {
+        const bar = e.target.closest(".bar, .missing, .lossy, .down");
+        if (!bar || !bar.dataset.time) { tooltip.style.display = "none"; return; }
+        const cls = bar.dataset.cls;
+        const colorClass = cls === 'down' ? 'tt-down' : cls === 'warn' ? 'tt-warn' : 'tt-ok';
+        tooltip.innerHTML = `
+          <div class="tt-time">${bar.dataset.time}</div>
+          <div class="${colorClass}">${bar.dataset.label}</div>
+          <div>Latence : <b>${bar.dataset.lat}</b></div>
+          <div>Perte&nbsp;&nbsp;&nbsp;: <b>${bar.dataset.loss}</b></div>`;
+        tooltip.style.display = "block";
+        tooltip.style.left = (e.clientX + 14) + "px";
+        tooltip.style.top  = (e.clientY - 10) + "px";
+      });
+      chart.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
 
       // Ticks X — positionnés à l'heure exacte correspondant à chaque barre
       const ticksEl = document.getElementById("ticks");
@@ -504,5 +561,6 @@
     refresh();
     setInterval(refresh, 60000);
   </script>
+<div id="pingTooltip"></div>
 </body>
 </html>
