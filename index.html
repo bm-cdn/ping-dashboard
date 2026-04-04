@@ -395,9 +395,8 @@
         const isDown = timeline[i].missing || timeline[i].status === 'down';
         if (isDown && start === null) start = i;
         if (!isDown && start !== null) {
-          const duration = i - start;
-          if (duration >= 2) {
-            // end = première minute UP → la plage start→end = exactement `duration` minutes
+          if (i - start >= 2) {
+            const duration = Math.round((new Date(timeline[i-1].checkedAt) - new Date(timeline[start].checkedAt)) / 60000);
             outages.push({ start: timeline[start].checkedAt, end: timeline[i-1].checkedAt, duration });
           }
           start = null;
@@ -405,10 +404,8 @@
       }
       // Coupure encore en cours à la fin de la fenêtre
       if (start !== null && timeline.length - start >= 2) {
-        const duration = timeline.length - start;
-        // Pas de minute UP connue : end = dernière minute + 1min
-        const lastTs = new Date(timeline[timeline.length - 1].checkedAt).getTime() + 60000;
-        outages.push({ start: timeline[start].checkedAt, end: new Date(lastTs).toISOString(), duration, ongoing: true });
+        const duration = Math.round((new Date(timeline[timeline.length-1].checkedAt) - new Date(timeline[start].checkedAt)) / 60000);
+        outages.push({ start: timeline[start].checkedAt, end: timeline[timeline.length-1].checkedAt, duration, ongoing: true });
       }
       return outages;
     }
