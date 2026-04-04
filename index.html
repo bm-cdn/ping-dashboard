@@ -221,6 +221,13 @@
       transition: all .2s ease;
     }
     .theme-toggle:hover { transform: scale(1.05); }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
     body.dark .theme-toggle { transform: rotate(180deg); }
 
 
@@ -248,15 +255,17 @@
         <h1>Ping Dashboard</h1>
         <div class="sub">24h glissantes · 1 ping/minute · 1440 barres</div>
       </div>
-      <button class="refresh" id="refreshBtn">Rafraîchir</button>
-      <button class="theme-toggle" id="themeToggle" title="Changer de thème"></button>
+      <div class="btn-group">
+        <button class="refresh" id="refreshBtn">Rafraîchir</button>
+        <button class="theme-toggle" id="themeToggle" title="Changer de thème"></button>
+      </div>
     </div>
 
     <div class="grid">
 
       <!-- DETAIL COUPURES (visible uniquement si coupures) -->
       <div class="card wide" id="outagesCard" style="display:none; border-color: var(--error);">
-        <div class="label">🚨 Détail des coupures (≥ 2 min) — 24h</div>
+        <div class="label">🚨 étail des coupures (≥ 2 min) — 24h</div>
         <div class="outages-list" id="outagesList"></div>
       </div>
 
