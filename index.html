@@ -211,10 +211,35 @@
     .lossy-row .lossy-pct { font-size: 18px; font-weight: 700; color: var(--warning); }
     .refresh { padding: 10px 14px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 12px; cursor: pointer; font-family: inherit; }
 
+    .theme-toggle {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all .2s ease;
+    }
+    .theme-toggle:hover { transform: scale(1.05); }
+    body.dark .theme-toggle { transform: rotate(180deg); }
+
+
     @media (max-width: 800px) {
       .kpi, .kpi2 { grid-column: span 12; }
     }
-  </style>
+  
+    body.dark {
+      --bg: #0f0f12; --surface: #1a1a1e; --surface-2: #242428; --offset: #2a2a2e;
+      --border: #33363a; --text: #e0e0e5; --muted: #a0a0a5; --primary: #4db8ff;
+      --success: #6ecb3c; --error: #e05aaa; --warning: #f0a040; --missing: #666a6f;
+      --shadow: 0 12px 32px rgba(0,0,0,.4);
+    }
+    body.dark .stat-cell { background: #242428; }
+    body.dark .stat-cell .label { color: var(--text); }
+    body.dark .no-outages { color: var(--muted); }
+    body.dark #pingTooltip { background: #1a1a1e; color: #e0e0e5; }
+
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -224,6 +249,7 @@
         <div class="sub">24h glissantes · 1 ping/minute · 1440 barres</div>
       </div>
       <button class="refresh" id="refreshBtn">Rafraîchir</button>
+      <button class="theme-toggle" id="themeToggle" title="Changer de thème">ߌ鼯button>
     </div>
 
     <div class="grid">
@@ -606,6 +632,19 @@
     }
 
     document.getElementById("refreshBtn").addEventListener("click", refresh);
+
+    // Toggle Dark/Light Mode
+    const themeToggle = document.getElementById('themeToggle');
+    const isDark = localStorage.getItem('pingDashboardDark') === 'true';
+    if (isDark) document.body.classList.add('dark');
+    themeToggle.textContent = isDark ? '☀️' : 'ߌ駻
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      const dark = document.body.classList.contains('dark');
+      themeToggle.textContent = dark ? '☀️' : 'ߌ駻
+      localStorage.setItem('pingDashboardDark', dark);
+    });
+
     refresh();
     setInterval(refresh, 60000);
   </script>
