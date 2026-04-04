@@ -356,7 +356,7 @@
       return outages;
     }
 
-    function renderAll(latest, histItems) {
+    function renderAll(latestData, histItems) {
       const timeline = buildTimeline(histItems);
       const outages = detectOutages(timeline);
 
@@ -382,12 +382,25 @@
         else el.style.color = val < 50 ? 'var(--success)' : val < 150 ? 'var(--warning)' : 'var(--error)';
       }
 
-      [['lat1m',w1],['lat5m',w5],['lat15m',w15],['lat30m',w30],['lat1h',w60]].forEach(([id, w]) => {
+      // Latence 1 min = valeur brute du dernier ping
+      const latestItem = latestData && latestData.item;
+      const lat1mVal = latestItem && latestItem.latencyMs != null ? Math.round(latestItem.latencyMs) : null;
+      const loss1mVal = latestItem && latestItem.packetLoss != null ? Number(latestItem.packetLoss) : null;
+
+      const el1mLat = document.getElementById('lat1m');
+      el1mLat.textContent = lat1mVal !== null ? lat1mVal : '—';
+      setStatColor(el1mLat, lat1mVal, false);
+
+      const el1mLoss = document.getElementById('loss1m');
+      el1mLoss.textContent = loss1mVal !== null ? loss1mVal : '—';
+      setStatColor(el1mLoss, loss1mVal, true);
+
+      [['lat5m',w5],['lat15m',w15],['lat30m',w30],['lat1h',w60]].forEach(([id, w]) => {
         const el = document.getElementById(id);
         el.textContent = w.avgLat !== null ? w.avgLat : '—';
         setStatColor(el, w.avgLat, false);
       });
-      [['loss1m',w1],['loss5m',w5],['loss15m',w15],['loss30m',w30],['loss1h',w60]].forEach(([id, w]) => {
+      [['loss5m',w5],['loss15m',w15],['loss30m',w30],['loss1h',w60]].forEach(([id, w]) => {
         const el = document.getElementById(id);
         el.textContent = w.avgLoss !== null ? w.avgLoss : '—';
         setStatColor(el, w.avgLoss, true);
