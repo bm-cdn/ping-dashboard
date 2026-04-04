@@ -234,6 +234,12 @@
         <div class="outages-list" id="outagesList"></div>
       </div>
 
+      <!-- PERTES PARTIELLES (visible uniquement si pertes partielles) -->
+      <div class="card wide" id="lossyCard" style="display:none; border-color: var(--warning);">
+        <div class="label">⚠️ Pertes partielles — 24h</div>
+        <div class="lossy-list" id="lossyList"></div>
+      </div>
+
       <!-- KPI 1 : Statut -->
       <div class="card kpi">
         <div class="label">Statut live</div>
@@ -260,12 +266,6 @@
         <div class="label">Coupures 24h</div>
         <div class="value big" id="nbCoupures">—</div>
         <div class="meta">Interruptions ≥ 2 min</div>
-      </div>
-
-      <!-- PERTES PARTIELLES (visible uniquement si pertes partielles) -->
-      <div class="card wide" id="lossyCard" style="display:none; border-color: var(--warning);">
-        <div class="label">⚠️ Pertes partielles — 24h</div>
-        <div class="lossy-list" id="lossyList"></div>
       </div>
 
       <!-- STATS MULTI-FENÊTRES -->
@@ -352,11 +352,6 @@
           <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div> Perte partielle</div>
         </div>
       </div>
-
-
-
-
-
     </div>
   </div>
 
