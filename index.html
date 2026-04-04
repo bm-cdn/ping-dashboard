@@ -527,7 +527,7 @@
 
       // Pings perdus 24h
       const totalMissingRaw = timeline.filter(x => x.missing || x.status === 'down').length;
-      const totalMissing = Math.max(0, totalMissingRaw - 1);
+      const totalMissing = Math.max(0, totalMissingRaw);
       document.getElementById("pingsPerdus").textContent = totalMissing;
       document.getElementById("pingsMeta").textContent = `sur 1440 pings (${Math.round(totalMissing/1440*100)}% perte)`;
 
